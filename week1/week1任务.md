@@ -61,16 +61,52 @@ tr 'a-z' 'A-Z' < file.txt
 
 ### 进程管理
 ```bash
-nohup command &                  # 后台运行
-ps aux | grep process_name       # 查看进程
-top                              # 实时进程监控
-kill PID                         # 终止进程
+# 将命令放入后台并忽略挂断信号 (SIGHUP)。注意：
+# - `nohup` 会把 stdout/stderr 重定向到 `nohup.out`（若未显式重定向）。
+# - `&` 把命令放到后台执行。
+# 推荐用法（把输出写到日志）：`nohup command > command.log 2>&1 &`
+```bash
+nohup → 忽略挂断信号（SIGHUP），使进程在退出 shell/断开会话后继续运行。
+command → 要执行的命令或脚本（占位符）。
+> command.log → 将 标准输出 (stdout, fd 1) 重定向到文件 command.log（覆盖写入）。
+2>&1 → 将 标准错误 (stderr, fd 2) 重定向到当前的 stdout（也就是同样写入 command.log）。顺序很重要：先把 stdout 重定向，再把 stderr 指向 stdout。
+& → 把该命令放到后台执行（shell 立即返回提示符）。
+```
+# 后台运行
+nohup command &
+
+# 列出当前系统上的所有进程并通过 `grep` 过滤进程名/关键字。
+# `ps aux`（BSD 风格）显示：USER, PID, %CPU, %MEM, VSZ, RSS, TTY, STAT, START, TIME, COMMAND。
+# 注意：`ps aux | grep name` 可能匹配到 grep 本身；可用 `grep [n]ame` 或 `pgrep -fl name` 避免。
+# 查看进程
+ps aux | grep process_name
+
+# 实时监控系统进程和资源使用（CPU、内存、负载等）。
+# 常用交互操作：`q` 退出；`P` 按 CPU 排序；`M` 按内存排序；`1` 显示所有 CPU 核心使用。
+# `htop` 为更友好的替代工具（若已安装）。
+top
+
+# 发送信号终止一个进程。默认 `kill PID` 发送 SIGTERM（允许进程清理退出）。
+# 如果进程不响应，可改用 `kill -9 PID`（SIGKILL，强制终止，不可被捕获）。
+# 可用 `pgrep` 或 `ps` 先确认 PID；也可用 `pkill -f pattern` 按名称/模式终止。
+kill PID
 ```
 
 ### 文件安全
 ```bash
+# 设置文件权限为 755：拥有者可读/写/执行，组和其他用户可读/执行
+# 这常用于可执行脚本，示例：`chmod 755 script.sh`。
+# 注意：使用更严格权限（如 700）可限制其他用户访问。
 chmod 755 script.sh              # 设置文件权限
+
+# 创建指向目标文件/目录的符号链接（软链接），不会复制文件内容
+# 用法：`ln -s target link_name`；若希望覆盖已存在的链接可加 `-f`（`ln -sf target link_name`）
+# `ls -l link_name` 会显示为 `link_name -> target`。
 ln -s target link_name           # 创建软链接
+
+# 将新路径添加到当前会话的 PATH 环境变量，使 shell 能找到该路径下的可执行文件
+# 只对当前 shell 有效（会话结束后失效）；若要永久生效，请把该行添加到 `~/.bashrc` 或 `~/.profile` 中
+# 示例检查是否已存在：`echo $PATH | tr ':' '\n' | grep -x "/new/path"`
 export PATH=$PATH:/new/path      # 添加环境变量
 ```
 
